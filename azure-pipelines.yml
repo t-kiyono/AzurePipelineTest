@@ -9,11 +9,35 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+container:
+  image: begeek.azurecr.io/ci/documentation
+  endpoint: MyAzureContainerRegistryConnection
+
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+- script: |
+    mkdir work
+    cp index.html work/
+  displayName: 'Copy artifacts to working directory'
+
+- task: DownloadSecureFile@1
+  name: deployKey
+  inputs:
+    secureFile: deploy_key
+  displayName: 'Get the deploy key'
 
 - script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    mkdir ~/.ssh && mv $(deployKey.secureFilePath) ~/.ssh/id_rsa
+    chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_rsa
+    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+  displayName: 'Configure ssh'
+
+- script: |
+    cd work
+    git init
+    git checkout -b gh-pages
+    git config --local user.name "t-kiyono"
+    git config --local user.email "t-kiyono@be-geek.net"
+    git add .
+    git commit -m 'gh-pages'
+    git push git@github.com:t-kiyono/AzurePipelineTest.git gh-pages -f
+  displayName: 'Push to gh-pages'
