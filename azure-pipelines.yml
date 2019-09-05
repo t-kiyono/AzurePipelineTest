@@ -9,16 +9,21 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+services:
+  db:
+    image: postgres
+    env:
+      TZ: Asia/Tokyo
+      POSTGRES_PASSWORD: petclinic
+      POSTGRES_USER: petclinic
+
 container:
-  image: begeek.azurecr.io/ci/documentation
+  image: begeek.azurecr.io/ci/petclinic-doc
   endpoint: MyAzureContainerRegistryConnection
+  env:
+    PGPASSWORD: petclinic
 
 steps:
-- script: |
-    mkdir work
-    cp index.html work/
-  displayName: 'Copy artifacts to working directory'
-
 - task: DownloadSecureFile@1
   name: deployKey
   inputs:
@@ -30,6 +35,14 @@ steps:
     chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_rsa
     ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
   displayName: 'Configure ssh'
+
+- script: psql -f DDL/01_base.sql -U petclinic -h db
+  displayName: 'Setup DB Schema'
+
+- script: |
+    mkdir work
+    java -jar /schemaspy-6.0.0.jar -o work -t pgsql -dp /drivers -host db -db petclinic -u petclinic -p petclinic
+  displayName: 'Execute schemaspy'
 
 - script: |
     cd work
