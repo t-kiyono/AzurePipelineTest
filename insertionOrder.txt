@@ -1,0 +1,7 @@
+owners
+specialties
+types
+vets
+pets
+visits
+vet_specialties
